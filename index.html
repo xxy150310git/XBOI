@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>XBOI 团队分数站 · 首页</title>
+<link rel="stylesheet" href="assets/css/style.css">
+</head>
+<body>
+
+<header class="topbar">
+  <div class="topbar-inner">
+    <a class="brand" href="index.html">
+      <span class="mark">♪</span>
+      <span>XBOI<small>团队分数站</small></span>
+    </a>
+    <nav class="nav">
+      <a href="index.html">首页</a>
+      <a href="leaderboard.html">排行榜</a>
+      <a href="query.html">X 币查询</a>
+      <a href="admin.html">管理后台</a>
+    </nav>
+  </div>
+</header>
+
+<main class="wrap">
+
+  <section class="hero">
+    <h1>XBOI 团队分数站</h1>
+    <p>这里能看到队里每个人的 X 币余额、比赛成绩和流水明细。想查自己的余额，直接进「X 币查询」输入洛谷用户名就好啦。</p>
+    <div class="tags">
+      <span>洛谷团队</span>
+      <span>X 币</span>
+      <span>比赛奖励</span>
+      <span>数据实时</span>
+    </div>
+  </section>
+
+  <div id="demoNotice" class="notice warn" style="margin-top:18px" hidden>
+    当前是<b>演示数据模式</b>：还没有填写 Supabase 配置，页面展示的是内置示例数据，增删改只在浏览器内存里生效。填好 <code>assets/js/config.js</code> 后会自动切换到真实数据。
+  </div>
+
+  <div class="stat-row" id="statRow" style="margin-top:18px">
+    <div class="stat"><div class="k">在队成员</div><div class="v" id="stMembers">—</div></div>
+    <div class="stat"><div class="k">X 币总量</div><div class="v" id="stCoin">—</div></div>
+    <div class="stat"><div class="k">流水条数</div><div class="v" id="stTx">—</div></div>
+    <div class="stat"><div class="k">累计比赛积分</div><div class="v" id="stScore">—</div></div>
+  </div>
+
+  <div class="entry-grid">
+    <a class="entry" href="leaderboard.html">
+      <div class="ico">🏆</div>
+      <h3>团队排行榜</h3>
+      <p>按 X 币余额、比赛积分、AK 次数、参赛场次排序，看看谁最强。</p>
+    </a>
+    <a class="entry" href="query.html">
+      <div class="ico">🔍</div>
+      <h3>X 币个人查询</h3>
+      <p>输入洛谷用户名，查看余额和每一笔收支的来源与时间。</p>
+    </a>
+    <a class="entry" href="admin.html">
+      <div class="ico">🛠️</div>
+      <h3>管理后台</h3>
+      <p>管理员登记成员、发放或扣除 X 币、录入比赛成绩。</p>
+    </a>
+  </div>
+
+  <div class="grid-2" style="margin-top:18px">
+    <div class="card">
+      <h2 class="card-title"><span class="dot"></span>X 币怎么拿</h2>
+      <ul class="rule-list">
+        <li>入门赛：AK 得 20 X 币，各题首 A 额外 10 X 币。</li>
+        <li>周赛／月赛：AK 得 50 X 币，各题首 A 分别 10、15、20、30 X 币。</li>
+        <li>周赛／月赛前五名：30、25、20、15、10 X 币（AK 与排名奖励互斥）。</li>
+        <li>周赛／月赛只要得分：额外 5 X 币。</li>
+        <li>成功举办成员赛：100 X 币。</li>
+        <li>群内分享优质题解：少量 X 币奖励。</li>
+      </ul>
+    </div>
+
+    <div class="card">
+      <h2 class="card-title"><span class="dot"></span>X 币什么时候扣</h2>
+      <ul class="rule-list">
+        <li>周训练未达标（不足 200 分或未提交）：每次扣 10 X 币。</li>
+        <li>比赛中作弊：扣除全部 X 币，并取消一段时间参赛资格。</li>
+        <li>群内恶意吵架、刷屏、发无关广告：视情节扣币或禁言。</li>
+        <li>兑换道具：补签卡 15、延长卡 20、申诉券 25、免扣卡 40 X 币。</li>
+        <li>自愿退队：个人 X 币全部清空，重新入队从零开始。</li>
+      </ul>
+    </div>
+  </div>
+
+</main>
+
+<footer class="footer">
+  XBOI 团队分数站 · 完整团队规则见 <a href="https://note.qninq.cn/xboi" target="_blank" rel="noopener">note.qninq.cn/xboi</a>
+</footer>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<script src="assets/js/config.js"></script>
+<script src="assets/js/rules.js"></script>
+<script src="assets/js/mock.js"></script>
+<script src="assets/js/ui.js"></script>
+<script src="assets/js/db.js"></script>
+<script src="assets/js/page-index.js"></script>
+</body>
+</html>

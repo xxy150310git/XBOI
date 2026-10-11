@@ -1,0 +1,348 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>XBOI 团队分数站 · 管理后台</title>
+<link rel="stylesheet" href="assets/css/style.css">
+</head>
+<body>
+
+<header class="topbar">
+  <div class="topbar-inner">
+    <a class="brand" href="index.html">
+      <span class="mark">♪</span>
+      <span>XBOI<small>团队分数站</small></span>
+    </a>
+    <nav class="nav">
+      <a href="index.html">首页</a>
+      <a href="leaderboard.html">排行榜</a>
+      <a href="query.html">X 币查询</a>
+      <a href="admin.html">管理后台</a>
+    </nav>
+  </div>
+</header>
+
+<main class="wrap">
+
+  <div class="page-head">
+    <h1>管理后台</h1>
+    <p>管理员登录后可登记成员、发放或扣除 X 币、录入比赛成绩。</p>
+  </div>
+
+  <div id="demoNotice" class="notice warn" hidden>
+    当前是<b>演示数据模式</b>：还没有填写 Supabase 配置，任意邮箱和密码都能进入，改动只留在当前页面内存里，刷新就没了。
+  </div>
+
+  <!-- ===== 登录 ===== -->
+  <div id="loginCard" class="card" style="max-width:440px" hidden>
+    <h2 class="card-title"><span class="dot"></span>管理员登录</h2>
+    <form id="loginForm">
+      <div class="field">
+        <label>邮箱</label>
+        <input id="email" type="email" placeholder="admin@example.com" autocomplete="username" required>
+      </div>
+      <div class="field">
+        <label>密码</label>
+        <input id="password" type="password" placeholder="登录密码" autocomplete="current-password" required>
+      </div>
+      <button class="btn" type="submit" style="width:100%" id="loginBtn">登录</button>
+    </form>
+    <div id="loginTip" class="notice info" style="margin:16px 0 0">
+      账号在 Supabase 控制台创建：Authentication → Users → Add user，填邮箱和密码即可。只有需要管理权限的人才创建账号。
+    </div>
+  </div>
+
+  <!-- ===== 已登录 ===== -->
+  <div id="dash" hidden>
+
+    <div class="card" style="display:flex;align-items:center;gap:14px;flex-wrap:wrap">
+      <div>当前登录：<b id="whoami">—</b></div>
+      <button class="btn ghost sm" id="logoutBtn" style="margin-left:auto">退出登录</button>
+    </div>
+
+    <div class="tabs" id="tabs" style="margin-top:18px">
+      <button class="on" data-tab="members">成员管理</button>
+      <button data-tab="coins">X 币操作</button>
+      <button data-tab="contests">比赛与成绩</button>
+    </div>
+
+    <!-- ---------- 成员管理 ---------- -->
+    <div class="tab-panel on" data-panel="members">
+      <div class="card">
+        <h2 class="card-title"><span class="dot"></span><span id="memberFormTitle">新增成员</span></h2>
+        <form id="memberForm">
+          <input type="hidden" id="mId">
+          <div class="row-3">
+            <div class="field">
+              <label>洛谷用户名 *</label>
+              <input id="mName" type="text" placeholder="例如 xxy150310" required>
+            </div>
+            <div class="field">
+              <label>昵称／备注称呼</label>
+              <input id="mDisplay" type="text" placeholder="例如 队长">
+            </div>
+            <div class="field">
+              <label>洛谷 UID</label>
+              <input id="mUid" type="text" placeholder="选填">
+            </div>
+          </div>
+          <div class="row-3">
+            <div class="field">
+              <label>名字颜色</label>
+              <select id="mColor">
+                <option>灰名</option><option>绿名</option><option>蓝名</option>
+                <option>紫名</option><option>橙名</option><option>红名</option><option>棕名</option>
+              </select>
+            </div>
+            <div class="field">
+              <label>团队身份</label>
+              <select id="mRole">
+                <option value="member">成员</option>
+                <option value="admin">管理员</option>
+              </select>
+            </div>
+            <div class="field">
+              <label>在队状态</label>
+              <select id="mStatus">
+                <option value="active">在队</option>
+                <option value="left">已退队</option>
+                <option value="removed">已移出</option>
+              </select>
+            </div>
+          </div>
+          <div class="row-2">
+            <div class="field">
+              <label>入队日期</label>
+              <input id="mJoined" type="date">
+            </div>
+            <div class="field">
+              <label>备注</label>
+              <input id="mNote" type="text" placeholder="选填">
+            </div>
+          </div>
+          <div class="toolbar" style="margin-bottom:0">
+            <button class="btn" type="submit">保存成员</button>
+            <button class="btn ghost" type="button" id="memberReset">清空表单</button>
+          </div>
+        </form>
+      </div>
+
+      <div class="card">
+        <h2 class="card-title"><span class="dot"></span>成员名单（<span id="memberCount">0</span> 人）</h2>
+        <div class="table-wrap" id="memberTable"><div class="spinner"></div></div>
+      </div>
+    </div>
+
+    <!-- ---------- X 币操作 ---------- -->
+    <div class="tab-panel" data-panel="coins">
+      <div class="card">
+        <h2 class="card-title"><span class="dot"></span>发放 / 扣除 X 币</h2>
+        <form id="coinForm">
+          <div class="row-2">
+            <div class="field">
+              <label>成员</label>
+              <select id="cMember"></select>
+            </div>
+            <div class="field">
+              <label>数量（正数发放，负数扣除）</label>
+              <input id="cAmount" type="number" placeholder="例如 10 或 -10" required>
+            </div>
+          </div>
+          <div class="row-2">
+            <div class="field">
+              <label>分类</label>
+              <select id="cCategory">
+                <option value="contest">比赛奖励</option>
+                <option value="training">周训练</option>
+                <option value="penalty">违规处罚</option>
+                <option value="reward">额外奖励</option>
+                <option value="exchange">道具兑换</option>
+                <option value="manual" selected>手动调整</option>
+                <option value="join">入队发放</option>
+                <option value="leave">退队清零</option>
+              </select>
+            </div>
+            <div class="field">
+              <label>事由说明</label>
+              <input id="cReason" type="text" placeholder="例如 周赛 R3 排名第 2 奖励" required>
+            </div>
+          </div>
+          <button class="btn" type="submit">提交流水</button>
+        </form>
+      </div>
+
+      <div class="card">
+        <h2 class="card-title"><span class="dot"></span>最近流水</h2>
+        <div class="table-wrap" id="txTable"><div class="spinner"></div></div>
+      </div>
+    </div>
+
+    <!-- ---------- 比赛与成绩 ---------- -->
+    <div class="tab-panel" data-panel="contests">
+      <div class="card">
+        <h2 class="card-title"><span class="dot"></span><span id="contestFormTitle">新增比赛</span></h2>
+        <form id="contestForm">
+          <input type="hidden" id="ctId">
+          <div class="row-3">
+            <div class="field">
+              <label>比赛名称 *</label>
+              <input id="ctName" type="text" placeholder="例如 周赛 R3" required>
+            </div>
+            <div class="field">
+              <label>类型</label>
+              <select id="ctType">
+                <option value="entry">入门赛</option>
+                <option value="week" selected>周赛</option>
+                <option value="month">月赛</option>
+                <option value="member">成员赛</option>
+              </select>
+            </div>
+            <div class="field">
+              <label>状态</label>
+              <select id="ctStatus">
+                <option value="finished" selected>已结束</option>
+                <option value="running">进行中</option>
+                <option value="planned">待举办</option>
+              </select>
+            </div>
+          </div>
+          <div class="row-3">
+            <div class="field">
+              <label>开赛时间</label>
+              <input id="ctHeld" type="datetime-local">
+            </div>
+            <div class="field">
+              <label>时长（小时）</label>
+              <input id="ctDuration" type="number" step="0.5" placeholder="例如 48">
+            </div>
+            <div class="field">
+              <label>题目数量</label>
+              <input id="ctProblems" type="number" placeholder="例如 4">
+            </div>
+          </div>
+          <div class="field">
+            <label>备注</label>
+            <input id="ctNote" type="text" placeholder="选填">
+          </div>
+          <div class="toolbar" style="margin-bottom:0">
+            <button class="btn" type="submit">保存比赛</button>
+            <button class="btn ghost" type="button" id="contestReset">清空表单</button>
+          </div>
+        </form>
+      </div>
+
+      <div class="grid-2">
+        <div class="card">
+          <h2 class="card-title"><span class="dot"></span>比赛列表</h2>
+          <div class="table-wrap compact" id="contestTable"><div class="spinner"></div></div>
+        </div>
+
+        <div class="card">
+          <h2 class="card-title"><span class="dot"></span>附录 2 奖励试算</h2>
+          <div class="field">
+            <label>比赛类型</label>
+            <select id="calcType">
+              <option value="entry">入门赛（6 题）</option>
+              <option value="week" selected>周赛（4 题）</option>
+              <option value="month">月赛（4 题）</option>
+            </select>
+          </div>
+          <div class="row-2">
+            <div class="field">
+              <label>名次（没进前五留空）</label>
+              <input id="calcRank" type="number" min="1" max="5" placeholder="1 ~ 5">
+            </div>
+            <div class="field">
+              <label>是否 AK</label>
+              <select id="calcAk">
+                <option value="0">没有 AK</option>
+                <option value="1">AK 了</option>
+              </select>
+            </div>
+          </div>
+          <div class="field">
+            <label>首 A 的题号（勾选即为该题首 A）</label>
+            <div class="chip-list" id="calcFb"></div>
+          </div>
+          <div class="field">
+            <label style="display:flex;align-items:center;gap:6px;cursor:pointer">
+              <input id="calcScored" type="checkbox" style="width:auto;margin:0"> 只要获得分数（+5 X 币）
+            </label>
+          </div>
+          <div class="calc-out" id="calcOut">填写上面的条件，这里会算出应发 X 币。</div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2 class="card-title"><span class="dot"></span>成绩录入</h2>
+        <div class="field">
+          <label>选择比赛</label>
+          <select id="resultContest"></select>
+        </div>
+
+        <form id="resultForm">
+          <input type="hidden" id="rsContestId">
+          <div class="row-3">
+            <div class="field">
+              <label>成员</label>
+              <select id="rsMember"></select>
+            </div>
+            <div class="field">
+              <label>得分</label>
+              <input id="rsScore" type="number" placeholder="例如 400" required>
+            </div>
+            <div class="field">
+              <label>名次</label>
+              <input id="rsRank" type="number" placeholder="例如 2">
+            </div>
+          </div>
+          <div class="row-3">
+            <div class="field">
+              <label>通过题数</label>
+              <input id="rsSolved" type="number" placeholder="例如 4">
+            </div>
+            <div class="field">
+              <label>首 A 题数</label>
+              <input id="rsFirst" type="number" placeholder="例如 2">
+            </div>
+            <div class="field">
+              <label>发放 X 币</label>
+              <input id="rsCoins" type="number" placeholder="例如 50" required>
+            </div>
+          </div>
+          <div class="field">
+            <label style="display:flex;align-items:center;gap:6px;cursor:pointer">
+              <input id="rsAk" type="checkbox" style="width:auto;margin:0"> 本场 AK
+            </label>
+          </div>
+          <div class="toolbar" style="margin-bottom:0">
+            <button class="btn" type="submit">写入成绩</button>
+            <button class="btn ghost" type="button" id="useCalc">用试算结果填发放 X 币</button>
+          </div>
+        </form>
+      </div>
+
+      <div class="card">
+        <h2 class="card-title"><span class="dot"></span>本场成绩</h2>
+        <div class="table-wrap" id="resultTable"><div class="empty">请先在上面选择一场比赛</div></div>
+      </div>
+    </div>
+
+  </div>
+
+</main>
+
+<footer class="footer">
+  XBOI 团队分数站 · 完整团队规则见 <a href="https://note.qninq.cn/xboi" target="_blank" rel="noopener">note.qninq.cn/xboi</a>
+</footer>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<script src="assets/js/config.js"></script>
+<script src="assets/js/rules.js"></script>
+<script src="assets/js/mock.js"></script>
+<script src="assets/js/ui.js"></script>
+<script src="assets/js/db.js"></script>
+<script src="assets/js/page-admin.js"></script>
+</body>
+</html>

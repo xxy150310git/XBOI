@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>XBOI 团队分数站 · 排行榜</title>
+<link rel="stylesheet" href="assets/css/style.css">
+</head>
+<body>
+
+<header class="topbar">
+  <div class="topbar-inner">
+    <a class="brand" href="index.html">
+      <span class="mark">♪</span>
+      <span>XBOI<small>团队分数站</small></span>
+    </a>
+    <nav class="nav">
+      <a href="index.html">首页</a>
+      <a href="leaderboard.html">排行榜</a>
+      <a href="query.html">X 币查询</a>
+      <a href="admin.html">管理后台</a>
+    </nav>
+  </div>
+</header>
+
+<main class="wrap">
+
+  <div class="page-head">
+    <h1>团队排行榜</h1>
+    <p>点任意一行可以直接跳到该成员的 X 币流水。默认按 X 币余额排序。</p>
+  </div>
+
+  <div id="demoNotice" class="notice warn" hidden>
+    当前是<b>演示数据模式</b>：还没有填写 Supabase 配置，展示的是内置示例数据。
+  </div>
+
+  <div class="card">
+    <div class="toolbar">
+      <div class="grow">
+        <input id="kw" type="text" placeholder="搜索洛谷用户名或昵称…">
+      </div>
+      <select id="sortKey" style="width:auto;min-width:150px">
+        <option value="balance">按 X 币余额</option>
+        <option value="total_score">按比赛积分</option>
+        <option value="ak_count">按 AK 次数</option>
+        <option value="contest_count">按参赛场次</option>
+        <option value="contest_coins">按比赛所得 X 币</option>
+      </select>
+      <label style="display:flex;align-items:center;gap:6px;font-size:14px;color:var(--ink-soft);font-weight:600;cursor:pointer">
+        <input id="onlyActive" type="checkbox" style="width:auto;margin:0"> 只看在队
+      </label>
+    </div>
+
+    <div class="table-wrap" id="tableBox">
+      <div class="spinner"></div>
+    </div>
+  </div>
+
+</main>
+
+<footer class="footer">
+  XBOI 团队分数站 · 完整团队规则见 <a href="https://note.qninq.cn/xboi" target="_blank" rel="noopener">note.qninq.cn/xboi</a>
+</footer>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<script src="assets/js/config.js"></script>
+<script src="assets/js/rules.js"></script>
+<script src="assets/js/mock.js"></script>
+<script src="assets/js/ui.js"></script>
+<script src="assets/js/db.js"></script>
+<script src="assets/js/page-leaderboard.js"></script>
+</body>
+</html>
