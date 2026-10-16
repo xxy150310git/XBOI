@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>XBOI 团队分数站 · 答题赛</title>
+<link rel="stylesheet" href="assets/css/style.css">
+<script src="assets/js/theme.js"></script>
+</head>
+<body>
+
+<header class="topbar">
+  <div class="topbar-inner">
+    <a class="brand" href="index.html">
+      <span class="mark">♪</span>
+      <span>XBOI<small>团队分数站</small></span>
+    </a>
+    <nav class="nav">
+      <a href="index.html">首页</a>
+      <a href="leaderboard.html">排行榜</a>
+      <a href="query.html">X 币查询</a>
+      <a href="redeem.html">道具兑换</a>
+      <a href="quiz.html">答题赛</a>
+      <a href="admin.html" data-admin-only hidden>管理后台</a>
+    </nav>
+  </div>
+</header>
+
+<main class="wrap">
+
+  <div class="page-head">
+    <h1>答题赛</h1>
+    <p>在规定时间内作答，卷面得分乘以积分倍率就是你能拿到的积分，同时会作为 X 币发到账户上。</p>
+  </div>
+
+  <div id="demoNotice" class="notice warn" hidden>
+    当前是<b>演示数据模式</b>：还没有填写 Supabase 配置。用 <b>Tianyi</b> 或 <b>xxy150310</b> 登录试试，密码统一是 <b>123456</b>。
+  </div>
+
+  <!-- 列表 -->
+  <div id="listView">
+    <div id="listBox"><div class="note-loading"></div></div>
+  </div>
+
+  <!-- 作答 -->
+  <div id="playView" hidden>
+    <div class="quiz-banner">
+      <div>
+        <h2 id="playName">—</h2>
+        <div class="sub" id="playSub">—</div>
+      </div>
+      <div class="quiz-timer" id="timer">--:--</div>
+    </div>
+
+    <div id="questionBox"></div>
+
+    <div class="card" style="margin-top:16px">
+      <div class="toolbar" style="margin-bottom:0">
+        <span class="muted" id="progressText">—</span>
+        <button class="btn ghost" type="button" id="backBtn">返回列表</button>
+        <button class="btn" type="button" id="submitBtn" style="margin-left:auto">交卷</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 成绩 -->
+  <div id="resultView" hidden>
+    <div class="card"><div class="result-box" id="resultBox"></div></div>
+    <div id="detailBox" style="margin-top:16px"></div>
+    <div style="margin-top:16px">
+      <button class="btn ghost" type="button" id="backBtn2">返回答题赛列表</button>
+    </div>
+  </div>
+
+</main>
+
+<footer class="footer">
+  XBOI 团队分数站 · 完整团队规则见 <a href="https://note.qninq.cn/xboi" target="_blank" rel="noopener">note.qninq.cn/xboi</a>
+</footer>
+
+<script src="assets/vendor/supabase.js"></script>
+<script>
+  // 本地这份没加载出来时（比如漏传了 assets/vendor）再退回 CDN
+  if (!window.supabase) {
+    document.write('<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"><\/script>');
+  }
+</script>
+<script src="assets/js/config.js"></script>
+<script src="assets/js/rules.js"></script>
+<script src="assets/js/items.js"></script>
+<script src="assets/js/quiz.js"></script>
+<script src="assets/js/mock.js"></script>
+<script src="assets/js/ui.js"></script>
+<script src="assets/js/db.js"></script>
+<script src="assets/js/auth.js"></script>
+<script src="assets/js/page-quiz.js"></script>
+</body>
+</html>

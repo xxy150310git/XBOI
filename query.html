@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>XBOI 团队分数站 · X 币查询</title>
 <link rel="stylesheet" href="assets/css/style.css">
+<script src="assets/js/theme.js"></script>
 </head>
 <body>
 
@@ -18,7 +19,9 @@
       <a href="index.html">首页</a>
       <a href="leaderboard.html">排行榜</a>
       <a href="query.html">X 币查询</a>
-      <a href="admin.html">管理后台</a>
+      <a href="redeem.html">道具兑换</a>
+      <a href="quiz.html">答题赛</a>
+      <a href="admin.html" data-admin-only hidden>管理后台</a>
     </nav>
   </div>
 </header>
@@ -51,12 +54,21 @@
   XBOI 团队分数站 · 完整团队规则见 <a href="https://note.qninq.cn/xboi" target="_blank" rel="noopener">note.qninq.cn/xboi</a>
 </footer>
 
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<script src="assets/vendor/supabase.js"></script>
+<script>
+  // 本地这份没加载出来时（比如漏传了 assets/vendor）再退回 CDN
+  if (!window.supabase) {
+    document.write('<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"><\/script>');
+  }
+</script>
 <script src="assets/js/config.js"></script>
 <script src="assets/js/rules.js"></script>
+<script src="assets/js/items.js"></script>
+<script src="assets/js/quiz.js"></script>
 <script src="assets/js/mock.js"></script>
 <script src="assets/js/ui.js"></script>
 <script src="assets/js/db.js"></script>
+<script src="assets/js/auth.js"></script>
 <script src="assets/js/page-query.js"></script>
 </body>
 </html>

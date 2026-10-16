@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>XBOI 团队分数站 · 排行榜</title>
 <link rel="stylesheet" href="assets/css/style.css">
+<script src="assets/js/theme.js"></script>
 </head>
 <body>
 
@@ -18,7 +19,9 @@
       <a href="index.html">首页</a>
       <a href="leaderboard.html">排行榜</a>
       <a href="query.html">X 币查询</a>
-      <a href="admin.html">管理后台</a>
+      <a href="redeem.html">道具兑换</a>
+      <a href="quiz.html">答题赛</a>
+      <a href="admin.html" data-admin-only hidden>管理后台</a>
     </nav>
   </div>
 </header>
@@ -42,8 +45,10 @@
       <select id="sortKey" style="width:auto;min-width:150px">
         <option value="balance">按 X 币余额</option>
         <option value="total_score">按比赛积分</option>
+        <option value="quiz_score">按答题积分</option>
         <option value="ak_count">按 AK 次数</option>
         <option value="contest_count">按参赛场次</option>
+        <option value="quiz_count">按答题场次</option>
         <option value="contest_coins">按比赛所得 X 币</option>
       </select>
       <label style="display:flex;align-items:center;gap:6px;font-size:14px;color:var(--ink-soft);font-weight:600;cursor:pointer">
@@ -62,12 +67,21 @@
   XBOI 团队分数站 · 完整团队规则见 <a href="https://note.qninq.cn/xboi" target="_blank" rel="noopener">note.qninq.cn/xboi</a>
 </footer>
 
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<script src="assets/vendor/supabase.js"></script>
+<script>
+  // 本地这份没加载出来时（比如漏传了 assets/vendor）再退回 CDN
+  if (!window.supabase) {
+    document.write('<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"><\/script>');
+  }
+</script>
 <script src="assets/js/config.js"></script>
 <script src="assets/js/rules.js"></script>
+<script src="assets/js/items.js"></script>
+<script src="assets/js/quiz.js"></script>
 <script src="assets/js/mock.js"></script>
 <script src="assets/js/ui.js"></script>
 <script src="assets/js/db.js"></script>
+<script src="assets/js/auth.js"></script>
 <script src="assets/js/page-leaderboard.js"></script>
 </body>
 </html>

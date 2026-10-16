@@ -10,6 +10,7 @@ XBOI.ui = (function () {
   var CATEGORY = {
     contest:  '比赛奖励',
     training: '周训练',
+    quiz:     '答题奖励',
     penalty:  '违规处罚',
     reward:   '额外奖励',
     exchange: '道具兑换',

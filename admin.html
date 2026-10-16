@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>XBOI 团队分数站 · 管理后台</title>
 <link rel="stylesheet" href="assets/css/style.css">
+<script src="assets/js/theme.js"></script>
 </head>
 <body>
 
@@ -18,7 +19,9 @@
       <a href="index.html">首页</a>
       <a href="leaderboard.html">排行榜</a>
       <a href="query.html">X 币查询</a>
-      <a href="admin.html">管理后台</a>
+      <a href="redeem.html">道具兑换</a>
+      <a href="quiz.html">答题赛</a>
+      <a href="admin.html" data-admin-only>管理后台</a>
     </nav>
   </div>
 </header>
@@ -31,29 +34,16 @@
   </div>
 
   <div id="demoNotice" class="notice warn" hidden>
-    当前是<b>演示数据模式</b>：还没有填写 Supabase 配置，任意邮箱和密码都能进入，改动只留在当前页面内存里，刷新就没了。
+    当前是<b>演示数据模式</b>：还没有填写 Supabase 配置。改动只留在当前页面内存里，刷新就没了。可以用 <b>xxy150310</b> 登录，密码 <b>123456</b>。
   </div>
 
-  <!-- ===== 登录 ===== -->
-  <div id="loginCard" class="card" style="max-width:440px" hidden>
-    <h2 class="card-title"><span class="dot"></span>管理员登录</h2>
-    <form id="loginForm">
-      <div class="field">
-        <label>邮箱</label>
-        <input id="email" type="email" placeholder="admin@example.com" autocomplete="username" required>
-      </div>
-      <div class="field">
-        <label>密码</label>
-        <input id="password" type="password" placeholder="登录密码" autocomplete="current-password" required>
-      </div>
-      <button class="btn" type="submit" style="width:100%" id="loginBtn">登录</button>
-    </form>
-    <div id="loginTip" class="notice info" style="margin:16px 0 0">
-      账号在 Supabase 控制台创建：Authentication → Users → Add user，填邮箱和密码即可。只有需要管理权限的人才创建账号。
-    </div>
+  <!-- ===== 身份不够就别进来 ===== -->
+  <div id="gateCard" class="card" style="max-width:460px" hidden>
+    <h2 class="card-title"><span class="dot"></span>需要管理员身份</h2>
+    <div id="gateBody"></div>
   </div>
 
-  <!-- ===== 已登录 ===== -->
+  <!-- ===== 管理员工作台 ===== -->
   <div id="dash" hidden>
 
     <div class="card" style="display:flex;align-items:center;gap:14px;flex-wrap:wrap">
@@ -65,6 +55,8 @@
       <button class="on" data-tab="members">成员管理</button>
       <button data-tab="coins">X 币操作</button>
       <button data-tab="contests">比赛与成绩</button>
+      <button data-tab="quiz">答题赛</button>
+      <button data-tab="redeem">道具兑换</button>
     </div>
 
     <!-- ---------- 成员管理 ---------- -->
@@ -329,6 +321,133 @@
       </div>
     </div>
 
+    <!-- ---------- 道具兑换 ---------- -->
+    <div class="tab-panel" data-panel="redeem">
+      <div class="card">
+        <h2 class="card-title"><span class="dot"></span>兑换码核销</h2>
+        <div class="toolbar">
+          <label style="display:flex;align-items:center;gap:6px;font-size:14px;color:var(--ink-soft);font-weight:600;cursor:pointer">
+            <input id="onlyUnused" type="checkbox" style="width:auto;margin:0" checked> 只看未使用
+          </label>
+          <button class="btn ghost sm" id="reloadRedeem" style="margin-left:auto">刷新</button>
+        </div>
+        <div class="table-wrap" id="redeemTable"><div class="spinner"></div></div>
+      </div>
+    </div>
+
+    <!-- ---------- 答题赛 ---------- -->
+    <div class="tab-panel" data-panel="quiz">
+
+      <div class="card">
+        <h2 class="card-title"><span class="dot"></span><span id="quizFormTitle">新建答题赛</span></h2>
+        <form id="quizForm">
+          <input type="hidden" id="qzId">
+          <div class="row-3">
+            <div class="field">
+              <label>名称 *</label>
+              <input id="qzName" type="text" placeholder="例如 周训答题 #1" required>
+            </div>
+            <div class="field">
+              <label>开赛时间 *</label>
+              <input id="qzStart" type="datetime-local" required>
+            </div>
+            <div class="field">
+              <label>作答时长（分钟）*</label>
+              <input id="qzDuration" type="number" min="1" value="60" required>
+            </div>
+          </div>
+          <div class="row-3">
+            <div class="field">
+              <label>积分倍率 *</label>
+              <input id="qzMultiplier" type="number" step="0.1" min="0" value="1" required>
+            </div>
+            <div class="field">
+              <label>是否发布</label>
+              <select id="qzPublished">
+                <option value="1">发布，成员可见</option>
+                <option value="0">先不发布</option>
+              </select>
+            </div>
+            <div class="field">
+              <label>说明</label>
+              <input id="qzDesc" type="text" placeholder="选填">
+            </div>
+          </div>
+          <div class="toolbar" style="margin-bottom:0">
+            <button class="btn" type="submit">保存答题赛</button>
+            <button class="btn ghost" type="button" id="quizReset">清空表单</button>
+          </div>
+        </form>
+      </div>
+
+      <div class="card">
+        <h2 class="card-title"><span class="dot"></span>答题赛列表</h2>
+        <div class="table-wrap" id="quizTable"><div class="spinner"></div></div>
+      </div>
+
+      <div class="card">
+        <h2 class="card-title"><span class="dot"></span>题目</h2>
+        <div class="field" style="max-width:420px">
+          <label>选择答题赛</label>
+          <select id="qQuestionQuiz"></select>
+        </div>
+        <div class="table-wrap" id="questionTable"><div class="empty">先在上面选一场答题赛</div></div>
+      </div>
+
+      <div class="card">
+        <h2 class="card-title"><span class="dot"></span><span id="questionFormTitle">新增题目</span></h2>
+        <form id="questionForm">
+          <input type="hidden" id="qId">
+          <div class="row-3">
+            <div class="field">
+              <label>题型</label>
+              <select id="qType">
+                <option value="choice">选择题</option>
+                <option value="judge">判断题</option>
+                <option value="fill">填空题</option>
+              </select>
+            </div>
+            <div class="field">
+              <label>本题分值</label>
+              <input id="qScore" type="number" min="0" value="10">
+            </div>
+            <div class="field">
+              <label>排序（小的排前面）</label>
+              <input id="qSort" type="number" value="0">
+            </div>
+          </div>
+          <div class="field">
+            <label>题干 *</label>
+            <textarea id="qStem" rows="3" placeholder="题目内容"></textarea>
+          </div>
+          <div class="field" id="qOptionsField">
+            <label>选项（每行一个，选择题至少两个）</label>
+            <textarea id="qOptions" rows="4" placeholder="第一行是 A，第二行是 B，依次类推"></textarea>
+          </div>
+          <div class="row-2">
+            <div class="field">
+              <label>答案 *</label>
+              <input id="qAnswer" type="text" placeholder="A">
+            </div>
+            <div class="field">
+              <label>怎么填</label>
+              <div class="muted" id="qAnswerHint" style="padding-top:10px;font-size:13px">—</div>
+            </div>
+          </div>
+          <div class="toolbar" style="margin-bottom:0">
+            <button class="btn" type="submit">保存题目</button>
+            <button class="btn ghost" type="button" id="questionReset">清空表单</button>
+          </div>
+        </form>
+      </div>
+
+      <div class="card">
+        <h2 class="card-title"><span class="dot"></span>本场成绩</h2>
+        <div class="table-wrap" id="quizScoreTable"><div class="empty">请先在上面选择一场答题赛</div></div>
+      </div>
+
+    </div>
+
   </div>
 
 </main>
@@ -337,12 +456,21 @@
   XBOI 团队分数站 · 完整团队规则见 <a href="https://note.qninq.cn/xboi" target="_blank" rel="noopener">note.qninq.cn/xboi</a>
 </footer>
 
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<script src="assets/vendor/supabase.js"></script>
+<script>
+  // 本地这份没加载出来时（比如漏传了 assets/vendor）再退回 CDN
+  if (!window.supabase) {
+    document.write('<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"><\/script>');
+  }
+</script>
 <script src="assets/js/config.js"></script>
 <script src="assets/js/rules.js"></script>
+<script src="assets/js/items.js"></script>
+<script src="assets/js/quiz.js"></script>
 <script src="assets/js/mock.js"></script>
 <script src="assets/js/ui.js"></script>
 <script src="assets/js/db.js"></script>
+<script src="assets/js/auth.js"></script>
 <script src="assets/js/page-admin.js"></script>
 </body>
 </html>

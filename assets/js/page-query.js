@@ -14,6 +14,7 @@
     var cls = 'tag-gray';
     if (cat === 'contest') cls = 'tag-blue';
     else if (cat === 'training') cls = 'tag-cyan';
+    else if (cat === 'quiz') cls = 'tag-pink';
     else if (cat === 'penalty') cls = 'tag-red';
     else if (cat === 'reward') cls = 'tag-green';
     else if (cat === 'exchange') cls = 'tag-purple';
@@ -74,9 +75,10 @@
       '</div></div>';
 
     // 小统计
-    html += '<div class="stat-row" style="margin-top:18px">' +
+    html += '<div class="stat-row five" style="margin-top:18px">' +
       '<div class="stat"><div class="k">参赛场次</div><div class="v">' + results.length + '</div></div>' +
       '<div class="stat"><div class="k">累计比赛积分</div><div class="v">' + totalScore + '</div></div>' +
+      '<div class="stat"><div class="k">答题积分</div><div class="v">' + (member.quiz_score || 0) + '</div></div>' +
       '<div class="stat"><div class="k">AK 次数</div><div class="v">' + akCount + '</div></div>' +
       '<div class="stat"><div class="k">比赛所得 X 币</div><div class="v">' + contestCoins + '</div></div>' +
       '</div>';

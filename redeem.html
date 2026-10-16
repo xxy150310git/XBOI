@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>XBOI 团队分数站 · 道具兑换</title>
+<link rel="stylesheet" href="assets/css/style.css">
+<script src="assets/js/theme.js"></script>
+</head>
+<body>
+
+<header class="topbar">
+  <div class="topbar-inner">
+    <a class="brand" href="index.html">
+      <span class="mark">♪</span>
+      <span>XBOI<small>团队分数站</small></span>
+    </a>
+    <nav class="nav">
+      <a href="index.html">首页</a>
+      <a href="leaderboard.html">排行榜</a>
+      <a href="query.html">X 币查询</a>
+      <a href="redeem.html">道具兑换</a>
+      <a href="quiz.html">答题赛</a>
+      <a href="admin.html" data-admin-only hidden>管理后台</a>
+    </nav>
+  </div>
+</header>
+
+<main class="wrap">
+
+  <div class="page-head">
+    <h1>道具兑换</h1>
+    <p>用 X 币换道具，换完会拿到一张兑换码。把兑换码发给管理员核销，核销后道具就生效啦。</p>
+  </div>
+
+  <div id="demoNotice" class="notice warn" hidden>
+    当前是<b>演示数据模式</b>：还没有填写 Supabase 配置，兑换只在本页面内存里生效。可以用 <b>Tianyi</b> 或 <b>xxy150310</b> 登录，密码统一是 <b>123456</b>。
+  </div>
+
+  <!-- 账户 -->
+  <div class="card">
+    <h2 class="card-title"><span class="dot"></span>我的账户</h2>
+    <div id="whoBox"><div class="note-loading"></div></div>
+    <!-- 刚兑换出来的兑换码放在这里，不会被刷新覆盖 -->
+    <div id="freshBox"></div>
+  </div>
+
+  <!-- 道具 -->
+  <div class="card">
+    <h2 class="card-title"><span class="dot"></span>可兑换道具</h2>
+    <div class="item-grid" id="itemGrid"><div class="note-loading"></div></div>
+  </div>
+
+  <!-- 我的兑换码 -->
+  <div class="card">
+    <h2 class="card-title"><span class="dot"></span>我的兑换码</h2>
+    <div id="codeBox"><div class="empty">登录后这里会显示你兑换过的道具与兑换码。</div></div>
+  </div>
+
+</main>
+
+<footer class="footer">
+  XBOI 团队分数站 · 完整团队规则见 <a href="https://note.qninq.cn/xboi" target="_blank" rel="noopener">note.qninq.cn/xboi</a>
+</footer>
+
+<script src="assets/vendor/supabase.js"></script>
+<script>
+  // 本地这份没加载出来时（比如漏传了 assets/vendor）再退回 CDN
+  if (!window.supabase) {
+    document.write('<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"><\/script>');
+  }
+</script>
+<script src="assets/js/config.js"></script>
+<script src="assets/js/rules.js"></script>
+<script src="assets/js/items.js"></script>
+<script src="assets/js/quiz.js"></script>
+<script src="assets/js/mock.js"></script>
+<script src="assets/js/ui.js"></script>
+<script src="assets/js/db.js"></script>
+<script src="assets/js/auth.js"></script>
+<script src="assets/js/page-redeem.js"></script>
+</body>
+</html>

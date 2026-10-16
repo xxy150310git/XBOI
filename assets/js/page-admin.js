@@ -5,54 +5,57 @@
 (function () {
   var ui = XBOI.ui;
   var db = XBOI.db;
+  var auth = XBOI.auth;
 
   ui.markNav();
   if (db.isDemo()) ui.$('#demoNotice').hidden = false;
 
   var memberCache = [];
   var contestCache = [];
+  var booted = false;        // 后台只初始化一次，避免登录状态变化时重复绑定
 
   // ------------------------------------------------------------
-  //  登录
+  //  进入条件：登录且是管理员
   // ------------------------------------------------------------
 
-  function showLogin() {
-    ui.$('#loginCard').hidden = false;
+  function showGate(kind) {
+    var card = ui.$('#gateCard');
+    var body = ui.$('#gateBody');
+    card.hidden = false;
     ui.$('#dash').hidden = true;
-    if (db.isDemo()) {
-      ui.$('#loginTip').innerHTML = '演示模式下随便填一个邮箱和密码就能进来，改动只留在当前页面内存里。';
+
+    if (kind === 'guest') {
+      body.innerHTML =
+        '<div class="notice info" style="margin-bottom:0">这个页面只有管理员能进，先登录一下。</div>' +
+        '<div style="margin-top:14px"><button class="btn" type="button" id="gateLogin">去登录</button></div>';
+      ui.$('#gateLogin').addEventListener('click', function () { auth.openLogin(); });
+    } else {
+      body.innerHTML =
+        '<div class="notice warn" style="margin-bottom:0">' +
+          '你现在的身份是<b>普通成员</b>，没有管理权限。' +
+          '如果确实需要，让队长在后台把你的身份改成管理员。' +
+        '</div>' +
+        '<div style="margin-top:14px"><button class="btn ghost" type="button" id="gateBack">回到首页</button></div>';
+      ui.$('#gateBack').addEventListener('click', function () { location.href = 'index.html'; });
     }
   }
 
-  function showDash(user) {
-    ui.$('#loginCard').hidden = true;
+  function showDash() {
+    var me = auth.me();
+    ui.$('#gateCard').hidden = true;
     ui.$('#dash').hidden = false;
-    ui.$('#whoami').textContent = (user && user.email) || '管理员';
+    ui.$('#whoami').textContent = me ? me.out_luogu_name : '管理员';
     boot();
   }
 
-  ui.$('#loginForm').addEventListener('submit', function (e) {
-    e.preventDefault();
-    var btn = ui.$('#loginBtn');
-    btn.disabled = true;
-    btn.textContent = '登录中…';
-    db.signIn(ui.$('#email').value.trim(), ui.$('#password').value).then(function (user) {
-      ui.toast('登录成功', 'ok');
-      showDash(user);
-    }).catch(function (err) {
-      ui.toast('登录失败：' + err.message, 'err');
-    }).then(function () {
-      btn.disabled = false;
-      btn.textContent = '登录';
-    });
+  ui.$('#logoutBtn').addEventListener('click', function () {
+    auth.openAccount();
   });
 
-  ui.$('#logoutBtn').addEventListener('click', function () {
-    db.signOut().then(function () {
-      ui.toast('已退出登录');
-      showLogin();
-      location.reload();
-    });
+  auth.onChange(function (user) {
+    if (!user) { showGate('guest'); return; }
+    if (user.out_role !== 'admin') { showGate('denied'); return; }
+    showDash();
   });
 
   // ------------------------------------------------------------
@@ -467,10 +470,356 @@
   });
 
   // ------------------------------------------------------------
+  //  兑换码核销
+  // ------------------------------------------------------------
+
+  var RDM_TEXT = { unused: '未使用', used: '已使用', expired: '已过期' };
+  var RDM_CLASS = { unused: 'tag-green', used: 'tag-gray', expired: 'tag-red' };
+
+  function loadRedeem() {
+    var box = ui.$('#redeemTable');
+    ui.loading(box, '正在读取兑换码…');
+    return db.listAllRedemptions(ui.$('#onlyUnused').checked).then(function (list) {
+      if (!list || !list.length) {
+        ui.empty(box, ui.$('#onlyUnused').checked ? '没有待核销的兑换码' : '还没有任何兑换记录');
+        return;
+      }
+      var html = '<table><thead><tr>' +
+        '<th>兑换码</th><th>成员</th><th>道具</th><th class="num">消耗</th>' +
+        '<th>状态</th><th>兑换时间</th><th>核销时间</th><th>操作</th>' +
+        '</tr></thead><tbody>';
+      list.forEach(function (r) {
+        var st = r.display_status || (r.status === 'used' ? 'used' : 'unused');
+        var canUse = st === 'unused';
+        html += '<tr>' +
+          '<td><b class="mono">' + ui.esc(r.code) + '</b></td>' +
+          '<td>' + ui.esc(r.luogu_name || '—') +
+            (r.display_name ? ' <span class="muted">' + ui.esc(r.display_name) + '</span>' : '') + '</td>' +
+          '<td>' + ui.esc(r.item_name) + '</td>' +
+          '<td class="num tx-out">\u2212' + ui.fmtNum(r.cost) + '</td>' +
+          '<td><span class="tag ' + (RDM_CLASS[st] || 'tag-gray') + '">' + (RDM_TEXT[st] || st) + '</span></td>' +
+          '<td class="muted">' + ui.fmtTime(r.created_at) + '</td>' +
+          '<td class="muted">' + (r.used_at ? ui.fmtTime(r.used_at) : '—') + '</td>' +
+          '<td>' + (canUse
+            ? '<button class="btn sm" data-use="' + ui.esc(r.id) + '">标记已使用</button>'
+            : '<span class="muted">—</span>') + '</td>' +
+          '</tr>';
+      });
+      html += '</tbody></table>';
+      box.innerHTML = html;
+
+      ui.$$('[data-use]', box).forEach(function (b) {
+        b.addEventListener('click', function () {
+          if (!confirm('确认核销这张兑换码吗？核销后不可撤销。')) return;
+          b.disabled = true;
+          db.markRedemptionUsed(b.getAttribute('data-use')).then(function () {
+            ui.toast('已标记为使用', 'ok');
+            loadRedeem();
+          }).catch(function (err) {
+            ui.toast('核销失败：' + err.message, 'err');
+            b.disabled = false;
+          });
+        });
+      });
+    }).catch(function (err) {
+      box.innerHTML = '<div class="notice danger" style="margin:16px">读取失败：' + ui.esc(err.message) + '</div>';
+    });
+  }
+
+  ui.$('#onlyUnused').addEventListener('change', loadRedeem);
+  ui.$('#reloadRedeem').addEventListener('click', loadRedeem);
+
+  // ------------------------------------------------------------
+  //  答题赛
+  // ------------------------------------------------------------
+
+  var quizCache = [];
+  var qz = XBOI.quiz;
+
+  var QUIZ_PHASE_TEXT = { planned: '未开始', running: '进行中', ended: '已结束', hidden: '未发布' };
+  var QUIZ_PHASE_CLASS = { planned: 'tag-cyan', running: 'tag-green', ended: 'tag-gray', hidden: 'tag-orange' };
+
+  function resetQuizForm() {
+    ui.$('#qzId').value = '';
+    ui.$('#qzName').value = '';
+    ui.$('#qzDesc').value = '';
+    ui.$('#qzStart').value = '';
+    ui.$('#qzDuration').value = '60';
+    ui.$('#qzMultiplier').value = '1';
+    ui.$('#qzPublished').value = '1';
+    ui.$('#quizFormTitle').textContent = '新建答题赛';
+  }
+
+  function loadQuizzes() {
+    return db.adminQuizList().then(function (list) {
+      quizCache = list || [];
+
+      var sel = ui.$('#qQuestionQuiz');
+      var keep = sel.value;
+      sel.innerHTML = quizCache.length
+        ? quizCache.map(function (q) {
+            return '<option value="' + ui.esc(q.out_id) + '">' + ui.esc(q.out_name) +
+              '（' + (QUIZ_PHASE_TEXT[q.out_phase] || q.out_phase) + '）</option>';
+          }).join('')
+        : '<option value="">（还没有答题赛）</option>';
+      if (keep) {
+        sel.value = keep;
+      } else {
+        // 默认挑一场已经有题的，省得点进去空空如也
+        var withQ = quizCache.filter(function (x) { return x.out_question_count > 0; });
+        if (withQ.length) sel.value = withQ[0].out_id;
+      }
+
+      var box = ui.$('#quizTable');
+      if (!quizCache.length) { ui.empty(box, '还没有答题赛，先在上面建一场'); return; }
+
+      var html = '<table><thead><tr>' +
+        '<th>名称</th><th>开赛时间</th><th class="num">时长</th><th class="num">倍率</th>' +
+        '<th class="num">题目 / 满分</th><th class="num">已交卷</th><th>状态</th><th>操作</th>' +
+        '</tr></thead><tbody>';
+      quizCache.forEach(function (q) {
+        html += '<tr>' +
+          '<td><b>' + ui.esc(q.out_name) + '</b>' +
+            (q.out_description ? '<div class="muted" style="font-size:12px">' + ui.esc(q.out_description) + '</div>' : '') +
+          '</td>' +
+          '<td class="muted">' + ui.fmtTime(q.out_start_at) + '</td>' +
+          '<td class="num">' + ui.fmtNum(q.out_duration_minutes) + ' 分</td>' +
+          '<td class="num">×' + ui.fmtNum(q.out_multiplier) + '</td>' +
+          '<td class="num">' + ui.fmtNum(q.out_question_count) + ' / ' + ui.fmtNum(q.out_full_score) + '</td>' +
+          '<td class="num">' + ui.fmtNum(q.out_attempt_count) + '</td>' +
+          '<td><span class="tag ' + (QUIZ_PHASE_CLASS[q.out_phase] || 'tag-gray') + '">' +
+            ui.esc(QUIZ_PHASE_TEXT[q.out_phase] || q.out_phase) + '</span></td>' +
+          '<td><button class="btn ghost sm" data-qzedit="' + ui.esc(q.out_id) + '">编辑</button> ' +
+              '<button class="btn danger sm" data-qzdel="' + ui.esc(q.out_id) + '">删除</button></td>' +
+          '</tr>';
+      });
+      html += '</tbody></table>';
+      box.innerHTML = html;
+
+      ui.$$('[data-qzedit]', box).forEach(function (b) {
+        b.addEventListener('click', function () { editQuiz(b.getAttribute('data-qzedit')); });
+      });
+      ui.$$('[data-qzdel]', box).forEach(function (b) {
+        b.addEventListener('click', function () { removeQuiz(b.getAttribute('data-qzdel')); });
+      });
+
+      if (!sel.dataset.bound) {
+        sel.dataset.bound = '1';
+        sel.addEventListener('change', function () { loadQuestions(); loadQuizScores(); });
+      }
+      if (sel.value) { loadQuestions(); loadQuizScores(); }
+    }).catch(function (err) {
+      ui.toast('读取答题赛失败：' + err.message, 'err');
+    });
+  }
+
+  function editQuiz(id) {
+    var q = null;
+    quizCache.forEach(function (x) { if (String(x.out_id) === String(id)) q = x; });
+    if (!q) return;
+    ui.$('#qzId').value = q.out_id;
+    ui.$('#qzName').value = q.out_name || '';
+    ui.$('#qzDesc').value = q.out_description || '';
+    // datetime-local 需要 YYYY-MM-DDTHH:MM 这种格式
+    ui.$('#qzStart').value = q.out_start_at ? String(q.out_start_at).slice(0, 16) : '';
+    ui.$('#qzDuration').value = q.out_duration_minutes;
+    ui.$('#qzMultiplier').value = q.out_multiplier;
+    ui.$('#qzPublished').value = q.out_published ? '1' : '0';
+    ui.$('#quizFormTitle').textContent = '编辑答题赛：' + q.out_name;
+  }
+
+  function removeQuiz(id) {
+    var q = null;
+    quizCache.forEach(function (x) { if (String(x.out_id) === String(id)) q = x; });
+    if (!confirm('确定删除答题赛「' + (q ? q.out_name : id) + '」吗？\n题目和已有的作答记录都会一起删掉，无法恢复。')) return;
+    db.adminDeleteQuiz(id).then(function () {
+      ui.toast('已删除', 'ok');
+      resetQuizForm();
+      return loadQuizzes();
+    }).catch(function (err) { ui.toast('删除失败：' + err.message, 'err'); });
+  }
+
+  ui.$('#quizForm').addEventListener('submit', function (e) {
+    e.preventDefault();
+    db.adminUpsertQuiz({
+      id: ui.$('#qzId').value || null,
+      name: ui.$('#qzName').value.trim(),
+      description: ui.$('#qzDesc').value.trim() || null,
+      start_at: ui.$('#qzStart').value || null,
+      duration_minutes: ui.$('#qzDuration').value,
+      multiplier: ui.$('#qzMultiplier').value,
+      published: ui.$('#qzPublished').value === '1'
+    }).then(function () {
+      ui.toast('答题赛已保存', 'ok');
+      resetQuizForm();
+      return loadQuizzes();
+    }).catch(function (err) { ui.toast('保存失败：' + err.message, 'err'); });
+  });
+
+  ui.$('#quizReset').addEventListener('click', resetQuizForm);
+
+  // ---------- 题目 ----------
+
+  function currentQuestionQuiz() { return ui.$('#qQuestionQuiz').value; }
+
+  function updateAnswerHint() {
+    var t = ui.$('#qType').value;
+    var hint = '';
+    if (t === 'choice') hint = '填选项字母，例如 A（选项按行顺序对应 A、B、C…）';
+    else if (t === 'judge') hint = '填 T 表示「对」，F 表示「错」（写 对/错 也能识别）';
+    else hint = '多个可接受的写法用 | 隔开，例如 main|Main；判分忽略大小写和首尾空格';
+
+    ui.$('#qAnswerHint').textContent = hint;
+    ui.$('#qOptionsField').hidden = t !== 'choice';
+  }
+
+  function resetQuestionForm() {
+    ui.$('#qId').value = '';
+    ui.$('#qStem').value = '';
+    ui.$('#qOptions').value = '';
+    ui.$('#qAnswer').value = '';
+    ui.$('#qScore').value = '10';
+    ui.$('#qSort').value = '0';
+    ui.$('#qType').value = 'choice';
+    ui.$('#questionFormTitle').textContent = '新增题目';
+    updateAnswerHint();
+  }
+
+  function loadQuestions() {
+    var quizId = currentQuestionQuiz();
+    var box = ui.$('#questionTable');
+    if (!quizId) { ui.empty(box, '先在上面选一场答题赛'); return Promise.resolve(); }
+
+    ui.loading(box, '正在读取题目…');
+    return db.adminQuizQuestions(quizId).then(function (list) {
+      if (!list || !list.length) { ui.empty(box, '这场还没有题目，在下面添加'); return; }
+
+      var html = '<table><thead><tr>' +
+        '<th class="num">序号</th><th>题型</th><th>题干</th><th>答案</th>' +
+        '<th class="num">分值</th><th>操作</th>' +
+        '</tr></thead><tbody>';
+      list.forEach(function (q) {
+        html += '<tr>' +
+          '<td class="num">' + ui.fmtNum(q.sort_order) + '</td>' +
+          '<td><span class="tag tag-cyan">' + ui.esc(qz.TYPES[q.qtype] || q.qtype) + '</span></td>' +
+          '<td style="white-space:normal;min-width:220px">' + ui.esc(q.stem) +
+            (q.qtype === 'choice' && q.options && q.options.length
+              ? '<div class="muted" style="font-size:12px">' +
+                q.options.map(function (o, i) {
+                  return String.fromCharCode(65 + i) + '. ' + ui.esc(o);
+                }).join('　') + '</div>'
+              : '') +
+          '</td>' +
+          '<td class="mono">' + ui.esc(q.answer) + '</td>' +
+          '<td class="num">' + ui.fmtNum(q.score) + '</td>' +
+          '<td><button class="btn ghost sm" data-qedit="' + ui.esc(q.id) + '">编辑</button> ' +
+              '<button class="btn danger sm" data-qdel="' + ui.esc(q.id) + '">删除</button></td>' +
+          '</tr>';
+      });
+      html += '</tbody></table>';
+      box.innerHTML = html;
+
+      ui.$$('[data-qedit]', box).forEach(function (b) {
+        b.addEventListener('click', function () { editQuestion(b.getAttribute('data-qedit'), list); });
+      });
+      ui.$$('[data-qdel]', box).forEach(function (b) {
+        b.addEventListener('click', function () {
+          if (!confirm('确定删除这道题吗？')) return;
+          db.adminDeleteQuestion(b.getAttribute('data-qdel')).then(function () {
+            ui.toast('已删除', 'ok');
+            loadQuestions();
+            loadQuizzes();
+          }).catch(function (err) { ui.toast('删除失败：' + err.message, 'err'); });
+        });
+      });
+    }).catch(function (err) {
+      box.innerHTML = '<div class="notice danger" style="margin:16px">读取失败：' + ui.esc(err.message) + '</div>';
+    });
+  }
+
+  function editQuestion(id, list) {
+    var q = null;
+    list.forEach(function (x) { if (String(x.id) === String(id)) q = x; });
+    if (!q) return;
+    ui.$('#qId').value = q.id;
+    ui.$('#qType').value = q.qtype;
+    ui.$('#qStem').value = q.stem || '';
+    ui.$('#qOptions').value = (q.options || []).join('\n');
+    ui.$('#qAnswer').value = q.answer || '';
+    ui.$('#qScore').value = q.score;
+    ui.$('#qSort').value = q.sort_order;
+    ui.$('#questionFormTitle').textContent = '编辑题目 #' + q.id;
+    updateAnswerHint();
+    window.scrollTo({
+      top: ui.$('#questionForm').getBoundingClientRect().top + window.scrollY - 90,
+      behavior: 'smooth'
+    });
+  }
+
+  ui.$('#qType').addEventListener('change', updateAnswerHint);
+  ui.$('#questionReset').addEventListener('click', resetQuestionForm);
+
+  ui.$('#questionForm').addEventListener('submit', function (e) {
+    e.preventDefault();
+    var options = ui.$('#qOptions').value.split('\n')
+      .map(function (s) { return s.trim(); })
+      .filter(function (s) { return s !== ''; });
+
+    db.adminUpsertQuestion({
+      id: ui.$('#qId').value || null,
+      quiz_id: currentQuestionQuiz(),
+      qtype: ui.$('#qType').value,
+      stem: ui.$('#qStem').value,
+      options: options,
+      answer: ui.$('#qAnswer').value,
+      score: ui.$('#qScore').value,
+      sort_order: ui.$('#qSort').value
+    }).then(function () {
+      ui.toast('题目已保存', 'ok');
+      resetQuestionForm();
+      loadQuestions();
+      loadQuizzes();
+    }).catch(function (err) { ui.toast('保存失败：' + err.message, 'err'); });
+  });
+
+  // ---------- 本场成绩 ----------
+
+  function loadQuizScores() {
+    var quizId = currentQuestionQuiz();
+    var box = ui.$('#quizScoreTable');
+    if (!quizId) { ui.empty(box, '请先在上面选择一场答题赛'); return Promise.resolve(); }
+
+    ui.loading(box, '正在读取成绩…');
+    return db.adminQuizAttempts(quizId).then(function (list) {
+      if (!list || !list.length) { ui.empty(box, '这场还没有人交卷'); return; }
+
+      var html = '<table><thead><tr>' +
+        '<th class="num">名次</th><th>成员</th><th class="num">卷面分</th><th class="num">倍率</th>' +
+        '<th class="num">最终积分</th><th class="num">答对 / 总题</th><th>交卷时间</th>' +
+        '</tr></thead><tbody>';
+      list.forEach(function (a, i) {
+        html += '<tr>' +
+          '<td><span class="rank-badge' + (i < 3 ? ' r' + (i + 1) : '') + '">' + (i + 1) + '</span></td>' +
+          '<td><b>' + ui.esc(a.out_luogu_name) + '</b>' +
+            (a.out_display_name ? ' <span class="muted">' + ui.esc(a.out_display_name) + '</span>' : '') + '</td>' +
+          '<td class="num">' + ui.fmtNum(a.out_raw_score) + '</td>' +
+          '<td class="num">×' + ui.fmtNum(a.out_multiplier) + '</td>' +
+          '<td class="num" style="color:var(--ty-blue-dark)">' + ui.fmtNum(a.out_final_score) + '</td>' +
+          '<td class="num">' + ui.fmtNum(a.out_correct) + ' / ' + ui.fmtNum(a.out_total) + '</td>' +
+          '<td class="muted">' + ui.fmtTime(a.out_submitted_at) + '</td>' +
+          '</tr>';
+      });
+      html += '</tbody></table>';
+      box.innerHTML = html;
+    }).catch(function (err) {
+      box.innerHTML = '<div class="notice danger" style="margin:16px">读取失败：' + ui.esc(err.message) + '</div>';
+    });
+  }
+
+  // ------------------------------------------------------------
   //  启动
   // ------------------------------------------------------------
 
-  var booted = false;
   function boot() {
     if (booted) return;
     booted = true;
@@ -479,15 +828,15 @@
 
     resetMemberForm();
     resetContestForm();
+    resetQuizForm();
+    resetQuestionForm();
     buildFbBoxes();
     calcNow();
 
     loadMembers();
     loadContests().then(function () { loadResults(); });
     loadTx();
+    loadRedeem();
+    loadQuizzes();
   }
-
-  db.getUser().then(function (user) {
-    if (user) showDash(user); else showLogin();
-  }).catch(function () { showLogin(); });
 })();

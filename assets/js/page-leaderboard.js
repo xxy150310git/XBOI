@@ -41,8 +41,8 @@
 
     var html = '<table><thead><tr>' +
       '<th>名次</th><th>洛谷用户名</th><th>昵称</th><th>名字颜色</th><th>身份</th><th>状态</th>' +
-      '<th class="num">X 币余额</th><th class="num">比赛积分</th><th class="num">AK</th>' +
-      '<th class="num">场次</th><th>入队日期</th>' +
+      '<th class="num">X 币余额</th><th class="num">比赛积分</th><th class="num">答题积分</th>' +
+      '<th class="num">AK</th><th class="num">参赛</th><th class="num">答题</th><th>入队日期</th>' +
       '</tr></thead><tbody>';
 
     list.forEach(function (r, i) {
@@ -57,8 +57,10 @@
         '<td>' + statusTag(r.status) + '</td>' +
         '<td class="num" style="color:var(--ty-blue-dark)">' + ui.fmtNum(r.balance) + '</td>' +
         '<td class="num">' + ui.fmtNum(r.total_score) + '</td>' +
+        '<td class="num" style="color:var(--ty-pink-deep)">' + ui.fmtNum(r.quiz_score) + '</td>' +
         '<td class="num">' + ui.fmtNum(r.ak_count) + '</td>' +
         '<td class="num">' + ui.fmtNum(r.contest_count) + '</td>' +
+        '<td class="num">' + ui.fmtNum(r.quiz_count) + '</td>' +
         '<td class="muted">' + ui.fmtDay(r.joined_at) + '</td>' +
         '</tr>';
     });

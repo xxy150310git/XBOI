@@ -70,9 +70,50 @@ XBOI.mock = (function () {
     { member_id: 'm6', amount: -25,  category: 'penalty',  reason: '群内刷屏，按规则 07 扣除',             created_at: '2026-03-22T21:10:00+08:00' },
     { member_id: 'm2', amount: 8,    category: 'reward',   reason: '群内分享优质题解',                    created_at: '2026-04-02T19:30:00+08:00' },
     { member_id: 'm1', amount: 100,  category: 'manual',   reason: '成功举办成员赛奖励',                  created_at: '2026-04-12T15:00:00+08:00' },
-    { member_id: 'm8', amount: -100, category: 'leave',    reason: '自愿退队，X 币清零',                  created_at: '2026-04-25T18:00:00+08:00' },
-    { member_id: 'm4', amount: -15,  category: 'exchange', reason: '兑换补签卡 ×1',                      created_at: '2026-04-26T09:00:00+08:00' }
+    { member_id: 'm8', amount: -100, category: 'leave',    reason: '自愿退队，X 币清零',                  created_at: '2026-04-25T18:00:00+08:00' }
   ];
+
+  // ---------- 兑换记录 ----------
+  // 兑换时间相对今天生成，这样演示数据不会随着时间推移全部变成「已过期」
+  var DAY = 86400000;
+  function daysAgo(n) { return new Date(Date.now() - n * DAY).toISOString(); }
+  function daysAfter(iso, n) { return new Date(new Date(iso).getTime() + n * DAY).toISOString(); }
+
+  var REDEMPTION_SEED = [
+    { code: 'XBOI-2WD6R-4PN9H', member_id: 'm6', item_code: 'makeup', item_name: '补签卡', cost: 15, status: 'unused', madeAgo: 128, usedAgo: null },
+    { code: 'XBOI-3F9K2-7QW8D', member_id: 'm4', item_code: 'makeup', item_name: '补签卡', cost: 15, status: 'unused', madeAgo: 12,  usedAgo: null },
+    { code: 'XBOI-8HN4M-2XR6P', member_id: 'm1', item_code: 'waiver', item_name: '免扣卡', cost: 40, status: 'used',   madeAgo: 26,  usedAgo: 22 },
+    { code: 'XBOI-6TB1Y-9KJ5C', member_id: 'm7', item_code: 'appeal', item_name: '申诉券', cost: 25, status: 'unused', madeAgo: 4,   usedAgo: null },
+    { code: 'XBOI-5VQ7L-3MZ8A', member_id: 'm3', item_code: 'extend', item_name: '延长卡', cost: 20, status: 'used',   madeAgo: 18,  usedAgo: 16 }
+  ];
+
+  var redemptions = REDEMPTION_SEED.map(function (s, i) {
+    var created = daysAgo(s.madeAgo);
+    return {
+      id: i + 1,
+      code: s.code,
+      member_id: s.member_id,
+      item_code: s.item_code,
+      item_name: s.item_name,
+      cost: s.cost,
+      status: s.status,
+      created_at: created,
+      expires_at: daysAfter(created, 90),          // 道具有效期 90 天
+      used_at: s.usedAgo === null ? null : daysAgo(s.usedAgo),
+      used_by: s.usedAgo === null ? null : 'demo-admin'
+    };
+  });
+
+  // 兑换产生的扣币流水，与上面的兑换记录一一对应
+  var exchangeTx = redemptions.map(function (r) {
+    return {
+      member_id: r.member_id,
+      amount: -r.cost,
+      category: 'exchange',
+      reason: '兑换' + r.item_name + ' ×1（兑换码 ' + r.code + '）',
+      created_at: r.created_at
+    };
+  });
 
   // ---------- 组装 ----------
   var api = {};
@@ -89,8 +130,16 @@ XBOI.mock = (function () {
     return hit;
   }
 
+  function itemByCode(code) {
+    var hit = null;
+    api.items.forEach(function (it) { if (it.code === code) hit = it; });
+    return hit;
+  }
+
   api.contests = contests;
   api.members = members;
+  api.redemptions = redemptions;
+  api.items = XBOI.items.demoList();
 
   // 成绩：把首 A 题数折算成题号数组，再用规则算 X 币
   api.results = rawResults.map(function (r, i) {
@@ -139,7 +188,7 @@ XBOI.mock = (function () {
   });
 
   // 汇总流水并按时间倒序整理出 id
-  api.transactions = extras.concat(contestTx)
+  api.transactions = extras.concat(exchangeTx, contestTx)
     .sort(function (a, b) { return new Date(a.created_at) - new Date(b.created_at); })
     .map(function (t, i) { t.id = i + 1; return t; });
 
@@ -152,6 +201,8 @@ XBOI.mock = (function () {
   }
 
   function leaderboardRows() {
+    var quizDemo = XBOI.quiz.demo;
+
     return api.members.map(function (m) {
       var coins = 0, score = 0, ak = 0, cnt = 0;
       api.results.forEach(function (r) {
@@ -159,6 +210,16 @@ XBOI.mock = (function () {
         coins += r.coins; score += r.score; cnt += 1;
         if (r.is_ak) ak += 1;
       });
+
+      // 答题积分：只算已经交卷的
+      var qScore = 0, qCount = 0, qScored = 0;
+      quizDemo.attempts.forEach(function (a) {
+        if (String(a.member_id) !== String(m.id) || !a.submitted_at) return;
+        qScore += Number(a.final_score) || 0;
+        qCount += 1;
+        if (Number(a.final_score) > 0) qScored += 1;
+      });
+
       return {
         id: m.id,
         luogu_name: m.luogu_name,
@@ -175,13 +236,17 @@ XBOI.mock = (function () {
         contest_coins: coins,
         total_score: score,
         ak_count: ak,
-        contest_count: cnt
+        contest_count: cnt,
+        quiz_score: qScore,
+        quiz_count: qCount,
+        quiz_scored_count: qScored
       };
     });
   }
 
   api.memberById = memberById;
   api.contestById = contestById;
+  api.itemByCode = itemByCode;
   api.balanceOf = balanceOf;
   api.leaderboardRows = leaderboardRows;
 
