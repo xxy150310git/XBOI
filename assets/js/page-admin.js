@@ -782,6 +782,215 @@
     }).catch(function (err) { ui.toast('保存失败：' + err.message, 'err'); });
   });
 
+  // ---------- 批量导入题目 ----------
+
+  var importText = '';        // 上一次读进来的文件原文，改默认分值时重解析用
+  var importName = '';        // 文件名，只用来显示
+  var importRows = null;      // 解析通过、等着写入的题目
+
+  function defaultScoreValue() {
+    var v = parseInt(ui.$('#importScore').value, 10);
+    return (isNaN(v) || v < 0) ? 10 : v;
+  }
+
+  function resetImportPanel() {
+    importText = '';
+    importName = '';
+    importRows = null;
+    ui.$('#importFile').value = '';
+    ui.$('#importWipe').checked = false;
+    ui.$('#importPreview').innerHTML = '';
+    var btn = ui.$('#importBtn');
+    btn.disabled = true;
+    btn.textContent = '确认导入';
+  }
+
+  // 文件按字节读，UTF-8 解不开就按 GBK 再解一次
+  // （DevC++、记事本这类编辑器在中文 Windows 上默认存 GBK）
+  function readFileText(file) {
+    return new Promise(function (resolve, reject) {
+      var fr = new FileReader();
+      fr.onerror = function () { reject(new Error('文件读不出来')); };
+      fr.onload = function () {
+        var buf = fr.result;
+        var text = null;
+        try {
+          text = new TextDecoder('utf-8', { fatal: true }).decode(buf);
+        } catch (e) {
+          try { text = new TextDecoder('gbk').decode(buf); } catch (e2) { text = null; }
+          if (text === null) text = new TextDecoder('utf-8').decode(buf);
+        }
+        resolve(String(text).replace(/^\uFEFF/, ''));
+      };
+      fr.readAsArrayBuffer(file);
+    });
+  }
+
+  function showImportPreview(res) {
+    var box = ui.$('#importPreview');
+    importRows = res.ok ? res.rows : null;
+    ui.$('#importBtn').disabled = !res.ok;
+
+    var html = '';
+
+    if (res.errors.length) {
+      html += '<div class="notice danger"><b>有 ' + res.errors.length + ' 处问题，先去改好再导入：</b>' +
+        '<ul class="import-err">' +
+        res.errors.slice(0, 12).map(function (e) { return '<li>' + ui.esc(e) + '</li>'; }).join('') +
+        (res.errors.length > 12 ? '<li>……另外还有 ' + (res.errors.length - 12) + ' 处</li>' : '') +
+        '</ul></div>';
+    }
+
+    if (res.rows.length) {
+      html += '<div class="notice success">从 <b>' + ui.esc(importName || '文件') + '</b> 读到 <b>' +
+        res.rows.length + ' 道题</b>：选择 ' + res.stat.choice + ' · 判断 ' + res.stat.judge +
+        ' · 填空 ' + res.stat.fill + '，满分 ' + res.stat.score + ' 分。' +
+        (res.ok ? '确认没问题就点「确认导入」。' : '') + '</div>';
+
+      html += '<div class="table-wrap compact"><table><thead><tr>' +
+        '<th class="num">序号</th><th>题型</th><th>题干</th><th>答案</th><th class="num">分值</th>' +
+        '</tr></thead><tbody>';
+      res.rows.slice(0, 8).forEach(function (r) {
+        html += '<tr>' +
+          '<td class="num">' + ui.fmtNum(r.sort_order) + '</td>' +
+          '<td><span class="tag tag-cyan">' + ui.esc(qz.TYPES[r.qtype] || r.qtype) + '</span></td>' +
+          '<td style="white-space:normal;min-width:200px">' + ui.esc(r.stem) +
+            (r.qtype === 'choice' && r.options.length
+              ? '<div class="muted" style="font-size:12px">' +
+                r.options.map(function (o, i) {
+                  return String.fromCharCode(65 + i) + '. ' + ui.esc(o);
+                }).join('　') + '</div>'
+              : '') +
+          '</td>' +
+          '<td class="mono">' + ui.esc(r.answer) + '</td>' +
+          '<td class="num">' + ui.fmtNum(r.score) + '</td>' +
+          '</tr>';
+      });
+      html += '</tbody></table></div>';
+      if (res.rows.length > 8) {
+        html += '<div class="muted" style="font-size:12px;margin-top:8px">上面只列了前 8 道，导入时会全部写进去。</div>';
+      }
+    } else if (!res.errors.length) {
+      html += '<div class="notice warn">这个文件里没有读到题目。</div>';
+    }
+
+    box.innerHTML = html;
+  }
+
+  function reparseImport() {
+    if (!importText) return;
+    showImportPreview(qz.parseBank(importText, { defaultScore: defaultScoreValue() }));
+  }
+
+  ui.$('#importFile').addEventListener('change', function () {
+    var f = ui.$('#importFile').files[0];
+    importRows = null;
+    ui.$('#importBtn').disabled = true;
+    ui.$('#importPreview').innerHTML = '';
+
+    if (!f) return;
+    if (!currentQuestionQuiz()) {
+      ui.$('#importPreview').innerHTML =
+        '<div class="notice warn">先在上面「题目」那一栏选一场答题赛，导入才知道往哪里放。</div>';
+      return;
+    }
+
+    importName = f.name;
+    ui.$('#importPreview').innerHTML = '<div class="notice info">正在读取 ' + ui.esc(f.name) + ' …</div>';
+
+    readFileText(f).then(function (text) {
+      importText = text;
+      showImportPreview(qz.parseBank(text, { defaultScore: defaultScoreValue() }));
+    }).catch(function (err) {
+      importText = '';
+      ui.$('#importPreview').innerHTML =
+        '<div class="notice danger">读取失败：' + ui.esc(err.message) + '</div>';
+    });
+  });
+
+  ui.$('#importScore').addEventListener('change', reparseImport);
+
+  ui.$('#importReset').addEventListener('click', function () {
+    resetImportPanel();
+    ui.toast('已清空');
+  });
+
+  ui.$('#importTpl').addEventListener('click', function () {
+    var blob = new Blob([qz.template()], { type: 'text/javascript;charset=utf-8' });
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    a.href = url;
+    a.download = 'XBOI-题目模板.js';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(function () { URL.revokeObjectURL(url); }, 1500);
+    ui.toast('模板已下载，改好再选进来导入', 'ok');
+  });
+
+  ui.$('#importBtn').addEventListener('click', function () {
+    var quizId = currentQuestionQuiz();
+    var btn = ui.$('#importBtn');
+
+    if (!quizId) { ui.toast('先选一场答题赛', 'err'); return; }
+    if (!importRows || !importRows.length) { ui.toast('还没有可以导入的题目', 'err'); return; }
+
+    var rows = importRows.slice();
+    var total = rows.length;
+    var done = 0;
+
+    // 先清空这一场已有的题目（可选）
+    var wipe = ui.$('#importWipe').checked;
+    if (wipe && !confirm('导入前会先删掉这一场已有的全部题目，确定吗？')) return;
+
+    var pre = Promise.resolve();
+    if (wipe) {
+      pre = db.adminQuizQuestions(quizId).then(function (old) {
+        var chain = Promise.resolve();
+        (old || []).forEach(function (q) {
+          chain = chain.then(function () { return db.adminDeleteQuestion(q.id); });
+        });
+        return chain;
+      });
+    }
+
+    btn.disabled = true;
+    btn.textContent = '导入中 0/' + total + '…';
+
+    pre.then(function () {
+      var chain = Promise.resolve();
+      rows.forEach(function (r) {
+        chain = chain.then(function () {
+          return db.adminUpsertQuestion({
+            quiz_id: quizId,
+            qtype: r.qtype,
+            stem: r.stem,
+            options: r.options,
+            answer: r.answer,
+            score: r.score,
+            sort_order: r.sort_order
+          }).then(function () {
+            done += 1;
+            btn.textContent = '导入中 ' + done + '/' + total + '…';
+          });
+        });
+      });
+      return chain;
+    }).then(function () {
+      ui.toast('已导入 ' + done + ' 道题', 'ok');
+      resetImportPanel();
+      loadQuestions();
+      loadQuizzes();
+    }).catch(function (err) {
+      ui.toast('导入中断：' + err.message + '（已经写进去 ' + done + ' 道）', 'err');
+      btn.disabled = false;
+      loadQuestions();
+      loadQuizzes();
+    }).then(function () {
+      btn.textContent = '确认导入';
+    });
+  });
+
   // ---------- 本场成绩 ----------
 
   function loadQuizScores() {
@@ -830,6 +1039,7 @@
     resetContestForm();
     resetQuizForm();
     resetQuestionForm();
+    resetImportPanel();
     buildFbBoxes();
     calcNow();
 

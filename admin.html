@@ -395,6 +395,34 @@
       </div>
 
       <div class="card">
+        <h2 class="card-title"><span class="dot"></span>批量导入题目</h2>
+        <p class="muted" style="margin:-6px 0 14px;font-size:13px;line-height:1.75">
+          把题目写成一个 JS 文件（内容是 <code>XBOI_QUESTIONS = [ … ]</code> 这样的数组），选进来就能一次性导进
+          <b>上面选中的那一场</b>答题赛。不清楚格式就点「下载模板」照着改。
+          <br>导入时浏览器会把这个文件执行一次来取数据，所以只选你自己写的文件。
+        </p>
+        <div class="row-2">
+          <div class="field">
+            <label>题目文件（.js）</label>
+            <input id="importFile" type="file" accept=".js,.json,.txt,text/javascript">
+          </div>
+          <div class="field">
+            <label>题目没写分值时，默认算几分</label>
+            <input id="importScore" type="number" min="0" value="10">
+          </div>
+        </div>
+        <div id="importPreview"></div>
+        <div class="toolbar" style="margin-bottom:0">
+          <button class="btn" type="button" id="importBtn" disabled>确认导入</button>
+          <button class="btn ghost" type="button" id="importTpl">下载模板</button>
+          <button class="btn ghost" type="button" id="importReset">清空</button>
+        </div>
+        <label class="import-wipe">
+          <input id="importWipe" type="checkbox"> 导入前先清空这一场已有的题目（原来的题会被删掉）
+        </label>
+      </div>
+
+      <div class="card">
         <h2 class="card-title"><span class="dot"></span><span id="questionFormTitle">新增题目</span></h2>
         <form id="questionForm">
           <input type="hidden" id="qId">

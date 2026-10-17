@@ -938,6 +938,7 @@ input:focus, select:focus, textarea:focus {
   flex: 0 0 auto;
   display: flex;
   align-items: center;
+  gap: 8px;
 }
 
 .theme-slot {
@@ -1056,6 +1057,76 @@ input:focus, select:focus, textarea:focus {
   color: #d1447f;
   background: #ffeaf4;
 }
+
+.auth-out {
+  padding: 6px 14px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: #fff;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  color: #6d8496;
+  cursor: pointer;
+  box-shadow: 0 3px 12px rgba(46, 159, 212, .1);
+  transition: color .16s, border-color .16s, background .16s, transform .16s, box-shadow .16s;
+}
+
+.auth-out:hover {
+  color: #d1447f;
+  border-color: #ffc6de;
+  background: #fff7fb;
+  transform: translateY(-1px);
+  box-shadow: 0 7px 18px rgba(209, 68, 127, .16);
+}
+
+.auth-out:active { transform: translateY(0) scale(.97); }
+
+/* ---------------- 题目批量导入 ---------------- */
+#importPreview > .notice { margin: 0 0 14px; }
+
+#importPreview .import-err {
+  margin: 8px 0 0;
+  padding-left: 20px;
+  font-weight: 600;
+}
+
+#importPreview .import-err li { margin: 3px 0; line-height: 1.65; }
+
+.import-wipe {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin-top: 14px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ink-soft);
+  cursor: pointer;
+}
+
+.import-wipe input[type="checkbox"] { width: auto; margin: 0; flex: 0 0 auto; }
+
+input[type="file"] {
+  padding: 7px 10px;
+  cursor: pointer;
+  font-size: 13px;
+}
+
+input[type="file"]::file-selector-button {
+  margin-right: 10px;
+  padding: 6px 14px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: #fff;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--ty-blue-dark);
+  cursor: pointer;
+  transition: border-color .16s, background .16s;
+}
+
+input[type="file"]::file-selector-button:hover { border-color: var(--ty-blue); background: #f2fbff; }
 
 .modal-mask {
   position: fixed;

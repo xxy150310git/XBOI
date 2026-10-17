@@ -70,12 +70,14 @@ XBOI.auth = (function () {
 
     if (current) {
       slot.innerHTML =
-        '<button class="user-chip" type="button" id="authChip">' +
+        '<button class="user-chip" type="button" id="authChip" title="我的账号与改密码">' +
           '<span class="user-ava">' + ui.esc(String(current.out_luogu_name).slice(0, 1).toUpperCase()) + '</span>' +
           '<span class="user-name">' + ui.esc(current.out_luogu_name) + '</span>' +
           (current.out_role === 'admin' ? '<span class="user-role">管理</span>' : '') +
-        '</button>';
+        '</button>' +
+        '<button class="auth-out" type="button" id="authOutBtn" title="退出登录">退出</button>';
       ui.$('#authChip').addEventListener('click', openAccount);
+      ui.$('#authOutBtn').addEventListener('click', function () { logout(); });
     } else {
       slot.innerHTML = '<button class="auth-btn" type="button" id="authLoginBtn">登录</button>';
       ui.$('#authLoginBtn').addEventListener('click', function () { openLogin(); });
@@ -143,6 +145,23 @@ XBOI.auth = (function () {
   }
 
   // ------------------------------------------------------------
+  //  退出登录（顶栏按钮与账号面板共用）
+  // ------------------------------------------------------------
+
+  function logout() {
+    db.memberLogout().then(function () {
+      apply(null);
+      ui.toast('已退出登录');
+      closeModal();
+    }).catch(function (e) {
+      // 服务端没通也要把本地状态清掉，否则页面会一直以为还登着
+      apply(null);
+      ui.toast('已退出登录' + (e && e.message ? '（' + e.message + '）' : ''));
+      closeModal();
+    });
+  }
+
+  // ------------------------------------------------------------
   //  账号面板（改密码 / 退出）
   // ------------------------------------------------------------
 
@@ -206,13 +225,7 @@ XBOI.auth = (function () {
       });
     });
 
-    ui.$('#outBtn').addEventListener('click', function () {
-      db.memberLogout().then(function () {
-        apply(null);
-        ui.toast('已退出登录');
-        closeModal();
-      });
-    });
+    ui.$('#outBtn').addEventListener('click', logout);
   }
 
   // ------------------------------------------------------------
