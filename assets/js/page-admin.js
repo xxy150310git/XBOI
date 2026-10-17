@@ -59,6 +59,44 @@
   });
 
   // ------------------------------------------------------------
+  //  时间输入框的时区转换
+  //  <input type="date"> 与 <input type="datetime-local"> 给出的都是
+  //  「不带时区的墙上时间」，原样发给后端会被按数据库时区解释
+  //  （Supabase 默认 UTC），于是整段时间会偏 8 小时。
+  //  这里统一按浏览器本地时区解释成绝对时刻，再转成带 Z 的 ISO 字符串。
+  // ------------------------------------------------------------
+
+  function pad2(n) { return n < 10 ? '0' + n : String(n); }
+
+  // 输入框的值 → ISO 字符串（带时区）
+  function localToIso(v) {
+    var s = String(v || '').trim();
+    if (!s) return null;
+    var m = s.match(/^(\d{4})-(\d{2})-(\d{2})(?:[T ](\d{2}):(\d{2})(?::(\d{2}))?)?$/);
+    if (!m) return s;                       // 认不出来就原样发，让后端报错
+    var d = new Date(+m[1], +m[2] - 1, +m[3],
+                     +(m[4] || 0), +(m[5] || 0), +(m[6] || 0));
+    return isNaN(d.getTime()) ? s : d.toISOString();
+  }
+
+  // ISO 字符串（带时区）→ 输入框的值（本地墙上时间）
+  function isoToLocal(iso, withTime) {
+    var s = String(iso || '').trim();
+    if (!s) return '';
+    var d = new Date(s);
+    if (isNaN(d.getTime())) return s.slice(0, withTime ? 16 : 10);
+    var out = d.getFullYear() + '-' + pad2(d.getMonth() + 1) + '-' + pad2(d.getDate());
+    if (withTime) out += 'T' + pad2(d.getHours()) + ':' + pad2(d.getMinutes());
+    return out;
+  }
+
+  // 今天的本地日期（不能直接用 toISOString，那样取的是 UTC 日期）
+  function todayLocal() {
+    var d = new Date();
+    return d.getFullYear() + '-' + pad2(d.getMonth() + 1) + '-' + pad2(d.getDate());
+  }
+
+  // ------------------------------------------------------------
   //  成员管理
   // ------------------------------------------------------------
 
@@ -67,7 +105,7 @@
     ui.$('#mColor').value = '灰名';
     ui.$('#mRole').value = 'member';
     ui.$('#mStatus').value = 'active';
-    ui.$('#mJoined').value = new Date().toISOString().slice(0, 10);
+    ui.$('#mJoined').value = todayLocal();
     ui.$('#memberFormTitle').textContent = '新增成员';
   }
 
@@ -135,7 +173,7 @@
     ui.$('#mColor').value = m.color || '灰名';
     ui.$('#mRole').value = m.role || 'member';
     ui.$('#mStatus').value = m.status || 'active';
-    ui.$('#mJoined').value = (m.joined_at || '').slice(0, 10);
+    ui.$('#mJoined').value = isoToLocal(m.joined_at, false);
     ui.$('#mNote').value = m.note || '';
     ui.$('#memberFormTitle').textContent = '编辑成员：' + m.luogu_name;
     window.scrollTo({ top: ui.$('#memberForm').getBoundingClientRect().top + window.scrollY - 90, behavior: 'smooth' });
@@ -162,7 +200,7 @@
       color: ui.$('#mColor').value,
       role: ui.$('#mRole').value,
       status: ui.$('#mStatus').value,
-      joined_at: ui.$('#mJoined').value || null,
+      joined_at: localToIso(ui.$('#mJoined').value),
       note: ui.$('#mNote').value.trim() || null
     };
     db.upsertMember(payload).then(function () {
@@ -295,7 +333,7 @@
     ui.$('#ctName').value = c.name || '';
     ui.$('#ctType').value = c.type || 'week';
     ui.$('#ctStatus').value = c.status || 'finished';
-    ui.$('#ctHeld').value = c.held_at ? String(c.held_at).slice(0, 16) : '';
+    ui.$('#ctHeld').value = isoToLocal(c.held_at, true);
     ui.$('#ctDuration').value = c.duration_hours === null || c.duration_hours === undefined ? '' : c.duration_hours;
     ui.$('#ctProblems').value = c.problem_count === null || c.problem_count === undefined ? '' : c.problem_count;
     ui.$('#ctNote').value = c.note || '';
@@ -320,7 +358,7 @@
       name: ui.$('#ctName').value.trim(),
       type: ui.$('#ctType').value,
       status: ui.$('#ctStatus').value,
-      held_at: ui.$('#ctHeld').value || null,
+      held_at: localToIso(ui.$('#ctHeld').value),
       duration_hours: ui.$('#ctDuration').value,
       problem_count: ui.$('#ctProblems').value,
       note: ui.$('#ctNote').value.trim() || null
@@ -621,7 +659,7 @@
     ui.$('#qzName').value = q.out_name || '';
     ui.$('#qzDesc').value = q.out_description || '';
     // datetime-local 需要 YYYY-MM-DDTHH:MM 这种格式
-    ui.$('#qzStart').value = q.out_start_at ? String(q.out_start_at).slice(0, 16) : '';
+    ui.$('#qzStart').value = isoToLocal(q.out_start_at, true);
     ui.$('#qzDuration').value = q.out_duration_minutes;
     ui.$('#qzMultiplier').value = q.out_multiplier;
     ui.$('#qzPublished').value = q.out_published ? '1' : '0';
@@ -645,7 +683,7 @@
       id: ui.$('#qzId').value || null,
       name: ui.$('#qzName').value.trim(),
       description: ui.$('#qzDesc').value.trim() || null,
-      start_at: ui.$('#qzStart').value || null,
+      start_at: localToIso(ui.$('#qzStart').value),
       duration_minutes: ui.$('#qzDuration').value,
       multiplier: ui.$('#qzMultiplier').value,
       published: ui.$('#qzPublished').value === '1'

@@ -90,6 +90,16 @@ XBOI.db = (function () {
     });
   }
 
+  // 给「returns jsonb」的函数用：拿到的本身就是一个对象，不能走 rpcRow
+  // （对象没有 length，会被当成空结果，表现出来就是「明明有数据却取不到」）。
+  // 万一后端改回单元素数组，这里也一并兼容。
+  function rpcObj(name, params) {
+    return rpc(name, params).then(function (v) {
+      if (Array.isArray(v)) return v.length ? v[0] : null;
+      return v || null;
+    });
+  }
+
   // ---------- 登录态 ----------
   function readToken() {
     try { return localStorage.getItem(TOKEN_KEY); } catch (e) { return null; }
@@ -873,7 +883,7 @@ XBOI.db = (function () {
         })
       });
     }
-    return rpcRow('quiz_take', { p_token: readToken(), p_quiz_id: quizId });
+    return rpcObj('quiz_take', { p_token: readToken(), p_quiz_id: quizId });
   }
 
   // 成员：交卷（服务端判分并结算）
@@ -944,7 +954,7 @@ XBOI.db = (function () {
         correct_count: correct, total_count: total, details: details
       });
     }
-    return rpcRow('quiz_submit', {
+    return rpcObj('quiz_submit', {
       p_token: readToken(), p_quiz_id: quizId, p_answers: answers || []
     });
   }

@@ -190,10 +190,14 @@
   function startQuiz(id) {
     ui.loading(ui.$('#listBox'), '正在打开卷子…');
     db.quizTake(id).then(function (data) {
-      if (!data || !data.quiz) throw new Error('这场答题赛没有题目');
+      if (!data || !data.quiz) throw new Error('这场答题赛没有题目，请联系管理员');
+      // 一道题都没有的时候别放人进去：交上去就是 0 分，还会白白用掉这一次机会
+      if (!data.questions || !data.questions.length) {
+        throw new Error('这场答题赛还没出题，等管理员出完再来');
+      }
       cur = data;
       autoSubmitted = false;
-      renderQuestions(data.quiz, data.questions || []);
+      renderQuestions(data.quiz, data.questions);
       show('play');
       startTimer(new Date(data.quiz.ends_at).getTime());
     }).catch(function (err) {
